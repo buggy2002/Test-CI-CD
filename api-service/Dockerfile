@@ -1,22 +1,20 @@
-# build stage
+# ใช้ image สำหรับ build
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /app
 
-# 👇 copy จาก root → เข้า api-service
-COPY api-service/*.csproj ./api-service/
-WORKDIR /app/api-service
-
+# copy file และ restore
+COPY . ./
 RUN dotnet restore
 
-COPY api-service/. ./
-RUN dotnet publish -c Release -o /app/out
+# build
+RUN dotnet publish -c Release -o out
 
-# runtime stage
+# ใช้ image สำหรับ run
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 
 COPY --from=build /app/out .
 
-EXPOSE 8080
+EXPOSE 80
 
 ENTRYPOINT ["dotnet", "api-service.dll"]
