@@ -50,7 +50,7 @@ app.MapGet("/weatherforecast", () =>
 
 app.MapGet("/hello", () =>
 {
-	return Results.Ok(new { message = "Hello From .NET NATEE" });
+	return Results.Ok(new { message = "TEST CI/CD SUCCESSFULY [NATEE : V2]" });
 });
 app.Run();
 
