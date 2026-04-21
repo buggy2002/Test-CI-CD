@@ -1,68 +1,43 @@
-name: Fullstack CI
+name: Fullstack CI/CD
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
+  # ------------------------
+  # 🟢 FRONTEND CI
+  # ------------------------
   build-frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-      - run: pnpm install --dir frontend
-      - run: pnpm run build --dir frontend
 
-      # Cache build output ไว้ให้ deploy job ใช้
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-build
-          path: frontend/.next  # หรือ frontend/dist ตาม framework
+      - name: Install & Build Frontend
+        run: |
+          cd frontend
+          pnpm install
+          pnpm run build
 
-  deploy-frontend:
-    runs-on: ubuntu-latest
-    needs: [build-frontend, build-backend]  # รอทั้งคู่ก่อน
-    # Deploy เฉพาะ push ไป main เท่านั้น ไม่ deploy ตอน PR
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-      - run: pnpm install --dir frontend
-
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-build
-          path: frontend/.next
-
-      - name: Deploy to Vercel
-        run: npx vercel --prod --token=$VERCEL_TOKEN --yes --cwd ./frontend
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
+  # ------------------------
+  # 🟣 BACKEND CI
+  # ------------------------
   build-backend:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
@@ -71,14 +46,40 @@ jobs:
           cd api-service
           dotnet build
 
+  # ------------------------
+  # 🐳 DOCKER BUILD (optional)
+  # ------------------------
   build-docker:
     runs-on: ubuntu-latest
     needs: [build-frontend, build-backend]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Build Docker images
         run: |
           docker build -t my-api ./api-service
           docker build -t my-frontend ./frontend
+
+  # ------------------------
+  # 🚀 DEPLOY FRONTEND (Vercel via CLI)
+  # ------------------------
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    needs: [build-frontend, build-backend]
+
+    # deploy เฉพาะ push ไป main
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Vercel
+        run: |
+          cd frontend
+          npx vercel deploy --prod --yes \
+            --token=$VERCEL_TOKEN \
+            --scope=$VERCEL_ORG_ID
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
