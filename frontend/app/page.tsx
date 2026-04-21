@@ -1,3 +1,4 @@
+
 export const dynamic = 'force-dynamic';
 
 async function getData() {
@@ -21,6 +22,9 @@ export default async function Home() {
         <p className="text-xl font-medium text-slate-300">API Status:</p>
         <p className="text-3xl font-bold text-green-400 mt-2">{data.message}</p>
       </div>
+      <button className="bg-blue-500 mt-4 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+        Click Me
+      </button>
     </div>
   );
 }
